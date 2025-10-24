@@ -2225,6 +2225,13 @@
                         <ul id="pontos-desenvolver-lista">
                             </ul>
                     </div>
+
+                    <div id="gemini-plano-estudo" class="pontos-desenvolver" style="border-   left-color: #8B5CF6; margin-top: 2rem; display: none;">
+                      <h3 style="color: #5B21B6;">🤖 Seu Plano de Estudo (Gerado por IA)</h3>
+                      <div id="gemini-plano-conteudo" style="padding-top: 1rem;">
+                    </div>
+                  </div>
+
                 </div>
 
                 <div class="acoes-relatorio">
@@ -3904,11 +3911,23 @@
                     document.getElementById('status-errou').textContent = metricas.resumo.errou;
                     document.getElementById('status-pulou').textContent = metricas.resumo.pulou;
 
+                    // 4. Geramos a análise E capturamos os pontos fracos
+                    var pontosFracos = gerarAnaliseQualitativa();
+
+                    // 5. Pegamos o nome do problema
+                    var nomeProblema = obterNomeProblema(estadoJornada.problemaEscolhido);
+
+                    // 6. Chamamos a nova função da API do Gemini com esses dados
+                    buscarPlanoDeEstudoGemini(pontosFracos, nomeProblema);
+
+
                     // 4. Chamar funções que preenchem o resto do relatório
                     // Essas funções já existem no seu script e preenchem os IDs corretos!
                     preencherDesempenhoPilares();
                     preencherTabelaExercicios();
                     gerarAnaliseQualitativa();
+
+
 
                     // 5. Mostrar a tela do relatório
                     mostrarTela('tela-resultado');
@@ -4043,10 +4062,24 @@
             document.getElementById('pontos-fortes-lista').innerHTML = htmlFortes || '<li>Continue praticando para identificar seus pontos fortes!</li>';
 
             var htmlDesenvolver = '';
+
+            // ===================================================
+            // MODIFICAÇÃO AQUI: Capturar nomes puros para a API
+            // ===================================================
+            var nomesPontosFracosParaGemini = [];
+            // ===================================================
+
             for (var k = 0; k < pontosDesenvolver.length; k++) {
                 htmlDesenvolver += '<li>' + pontosDesenvolver[k] + '</li>';
+
+                // MODIFICAÇÃO AQUI: Salva o nome puro do pilar
+                // Extrai "Decomposição" da string "Decomposição precisa ser..."
+                nomesPontosFracosParaGemini.push(pontosDesenvolver[k].split(' precisa')[0]);
+
             }
             document.getElementById('pontos-desenvolver-lista').innerHTML = htmlDesenvolver || '<li>Parabéns! Demonstrou domínio em todas as áreas.</li>';
+
+            return nomesPontosFracosParaGemini;
         }
 
         function capitalizarPrimeira(str) {
@@ -4549,6 +4582,58 @@
             }
         });
 
+
+          // ===================================================
+          // NOVA FUNÇÃO PARA CHAMAR A API (PLANO DE ESTUDO)
+          // ===================================================
+          async function buscarPlanoDeEstudoGemini(pontosFracos, problema) {
+            const container = document.getElementById('gemini-plano-estudo');
+            const conteudo = document.getElementById('gemini-plano-conteudo');
+
+            // Mostra o container com a mensagem de "carregando"
+            container.style.display = 'block';
+            conteudo.innerHTML = '<p>Personalizando seu plano de estudo... O Gemini está analisando seu desempenho.</p>';
+
+            try {
+              // Chama a NOVA API que criamos na Vercel
+              const response = await fetch('/api/gerar-plano-estudo', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  pontosFracos: pontosFracos, // Array de strings, ex: ['Decomposição']
+                  problema: problema       // String, ex: 'Logística E-commerce'
+                })
+              });
+
+              if (!response.ok) {
+                throw new Error(`Erro na API: ${response.status}`);
+              }
+
+              const data = await response.json();
+
+              // Formata o texto do Gemini (Markdown simples para HTML)
+              // Converte **negrito** para <strong> e quebras de linha para <br>
+              let htmlFormatado = data.planoDeEstudo
+                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                  .replace(/\n/g, '<br>');
+
+              // Simples conversão de listas * item para <li>
+              if (htmlFormatado.includes('* ')) {
+                  htmlFormatado = htmlFormatado.replace(/\* (.*?)(<br>|$)/g, '<li>$1</li>');
+                  htmlFormatado = '<ul>' + htmlFormatado.replace(/<li>/g, '<br><li>') + '</ul>';
+                  htmlFormatado = htmlFormatado.replace(/<br><ul>/, '<ul>').replace(/<br><li>/g, '<li>');
+              }
+
+              conteudo.innerHTML = htmlFormatado;
+
+            } catch (error) {
+              console.error('Falha ao buscar plano de estudo:', error);
+              conteudo.innerHTML = '<p>Desculpe, não foi possível gerar seu plano de estudo no momento.</p>';
+            }
+          }
+
         // Inicialização quando DOM carregar
         document.addEventListener('DOMContentLoaded', function() {
             console.log('');
@@ -4588,6 +4673,9 @@
             console.log('');
             console.log('🎆 JORNADA COMPLETA PRONTA PARA USO!');
         });
+
+
+
 
         // Log de teste imediato
         console.log('🧪 TESTE DE FUNÇÕES UI MELHORADA:');
