@@ -20,5 +20,8 @@
   "description": "",
   "dependencies": {
     "@google/generative-ai": "^0.24.1"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.3"
   }
 }

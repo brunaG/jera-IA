@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     // 2. PEGANDO A API KEY (DE FORMA SEGURA)
     // A chave virá das "Environment Variables" da Vercel
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // 3. PEGANDO O DADO DO FRONTEND
     // Pega o texto do exercício que seu HTML enviou
