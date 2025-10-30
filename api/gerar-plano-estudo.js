@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
     // ----- CORREÇÃO APLICADA AQUI -----
     // Use "gemini-1.5-flash" sem o "-latest"
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     // ----- FIM DA CORREÇÃO -----
 
     const { pontosFracos, problema } = req.body;
