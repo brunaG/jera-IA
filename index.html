@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jornada do Pensamento Computacional</title>
 
+    <!-- BIBLIOTECA PDF ADICIONADA -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 
     <style>
         * {
@@ -51,12 +51,22 @@
             text-align: center;
         }
 
+        /* Estilo para botões desabilitados */
+        .btn:disabled {
+            background-color: #9CA3AF; /* Cinza */
+            color: #E5E7EB;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+
         .btn-primary {
             background: #2563EB;
             color: white;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #1D4ED8;
             transform: scale(1.05);
         }
@@ -66,7 +76,7 @@
             color: white;
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: #4B5563;
         }
 
@@ -827,6 +837,7 @@
                 padding: 1.5rem;
             }
 
+
             .btn-comecar-jornada {
                 font-size: 1.1rem;
                 padding: 1.2rem 2rem;
@@ -839,6 +850,11 @@
             .btn-large {
                 padding: 1rem 1.5rem;
                 font-size: 1.1rem;
+            }
+
+            /* NOVOS BOTÕES DO PLANO DE ESTUDO */
+            #plano-estudo-acoes {
+                flex-direction: column;
             }
         }
 
@@ -1475,7 +1491,7 @@
             color: white;
         }
 
-        .btn-success:hover {
+        .btn-success:hover:not(:disabled) {
             background: #059669;
         }
 
@@ -1532,6 +1548,9 @@
             margin-top: 0.5rem;
         }
 
+        /* --- NOVOS ESTILOS PARA PLANO DE ESTUDO --- */
+
+        /* Container dos novos botões */
         #plano-estudo-acoes {
             display: none; /* Começa oculto */
             flex-wrap: wrap;
@@ -1621,11 +1640,11 @@
         }
 
         /* Classe para mostrar o gabarito */
-        .mostrar-gabarito .gabarito-resposta {
+        #gemini-plano-conteudo.mostrar-gabarito .gabarito-resposta {
             display: block;
             animation: fadeIn 0.5s;
         }
-
+        /* --- FIM DOS NOVOS ESTILOS --- */
 
     </style>
 </head>
@@ -2326,11 +2345,30 @@
                             </ul>
                     </div>
 
-                    <div id="gemini-plano-estudo" class="pontos-desenvolver" style="border-   left-color: #8B5CF6; margin-top: 2rem; display: none;">
+                    <!-- SEÇÃO DO PLANO DE ESTUDO DA IA -->
+                    <div id="gemini-plano-estudo" class="pontos-desenvolver" style="border-left-color: #8B5CF6; margin-top: 2rem; display: none;">
                       <h3 style="color: #5B21B6;">🤖 Seu Plano de Estudo (Gerado por IA)</h3>
+
+                      <!-- Conteúdo (explicação e exercícios) será injetado aqui -->
                       <div id="gemini-plano-conteudo" style="padding-top: 1rem;">
+                          <!-- Ex: <p>Carregando plano...</p> -->
+                      </div>
+
+                      <!-- NOVOS BOTÕES DE AÇÃO -->
+                      <div id="plano-estudo-acoes">
+                          <button id="btn-gabarito" class="btn btn-plano btn-gabarito" onclick="toggleGabaritoPlano()">
+                              👁️ Mostrar Gabarito
+                          </button>
+                          <button id="btn-gerar-mais" class="btn btn-plano btn-gerar-mais" onclick="gerarMaisExercicios()">
+                              🔄 Gerar Mais Exercícios
+                          </button>
+                          <button id="btn-pdf-plano" class="btn btn-plano btn-pdf-plano" onclick="baixarPlanoPDF()">
+                              📥 Baixar Plano (PDF)
+                          </button>
+                      </div>
+
                     </div>
-                  </div>
+                  <!-- FIM DA SEÇÃO DO PLANO -->
 
                 </div>
 
@@ -2401,6 +2439,9 @@
             dataInicio: null,
             dataFim: null
         };
+
+        // NOVO: Armazena o plano de estudo gerado pela IA
+        var planoEstudoAtual = { explicacao: "", exercicios: [] };
 
         // SISTEMA DE MÉTRICAS COMPLETO
         var metricas = {
@@ -3921,7 +3962,7 @@
         window.iniciarExercicios = iniciarExercicios;
         window.carregarExercicio = carregarExercicio;
         window.selecionarOpcao = selecionarOpcao;
-        window.verificarResposta = verificarResposta;
+        // window.verificarResposta = verificarResposta; // Removida, substituída por validarResposta
         window.proximoExercicio = proximoExercicio;
         window.atualizarDisplays = atualizarDisplays;
         window.atualizarDisplaysExercicio = atualizarDisplaysExercicio;
@@ -3988,7 +4029,6 @@
         // Botão removido conforme solicitação do usuário
 
         // FUNÇÃO: Mostrar Resultado Final - RELATÓRIO COMPLETO
-        // FUNÇÃO: Mostrar Resultado Final - RELATÓRIO COMPLETO
                 function mostrarResultadoFinal() {
                     console.log("🏆 MOSTRANDO RELATÓRIO DETALHADO...");
 
@@ -4012,7 +4052,8 @@
                     document.getElementById('status-pulou').textContent = metricas.resumo.pulou;
 
                     // 4. Geramos a análise E capturamos os pontos fracos
-                    var pontosFracos = gerarAnaliseQualitativa();
+                    // A função agora é silenciosa (true) para não atualizar a UI, apenas retornar dados
+                    var pontosFracos = gerarAnaliseQualitativa(true);
 
                     // 5. Pegamos o nome do problema
                     var nomeProblema = obterNomeProblema(estadoJornada.problemaEscolhido);
@@ -4025,6 +4066,7 @@
                     // Essas funções já existem no seu script e preenchem os IDs corretos!
                     preencherDesempenhoPilares();
                     preencherTabelaExercicios();
+                    // Agora chamamos sem parâmetro para atualizar a UI
                     gerarAnaliseQualitativa();
 
 
@@ -4113,7 +4155,7 @@
         }
 
         // FUNÇÃO: Gerar Análise Qualitativa
-        function gerarAnaliseQualitativa() {
+        function gerarAnaliseQualitativa(silencioso = false) {
             var pontosFortes = [];
             var pontosDesenvolver = [];
 
@@ -4154,32 +4196,42 @@
                 pontosDesenvolver.push('Evitar pular exercícios: ' + metricas.resumo.pulou + ' pulados');
             }
 
-            // Preencher listas
-            var htmlFortes = '';
-            for (var j = 0; j < pontosFortes.length; j++) {
-                htmlFortes += '<li>' + pontosFortes[j] + '</li>';
+            // Preencher listas (só se não for modo silencioso)
+            if (!silencioso) {
+                var htmlFortes = '';
+                for (var j = 0; j < pontosFortes.length; j++) {
+                    htmlFortes += '<li>' + pontosFortes[j] + '</li>';
+                }
+                document.getElementById('pontos-fortes-lista').innerHTML = htmlFortes || '<li>Continue praticando para identificar seus pontos fortes!</li>';
+
+                var htmlDesenvolver = '';
+
+                // ===================================================
+                // MODIFICAÇÃO AQUI: Capturar nomes puros para a API
+                // ===================================================
+                var nomesPontosFracosParaGemini = [];
+                // ===================================================
+
+                for (var k = 0; k < pontosDesenvolver.length; k++) {
+                    htmlDesenvolver += '<li>' + pontosDesenvolver[k] + '</li>';
+
+                    // MODIFICAÇÃO AQUI: Salva o nome puro do pilar
+                    // Extrai "Decomposição" da string "Decomposição precisa ser..."
+                    nomesPontosFracosParaGemini.push(pontosDesenvolver[k].split(' precisa')[0]);
+
+                }
+                document.getElementById('pontos-desenvolver-lista').innerHTML = htmlDesenvolver || '<li>Parabéns! Demonstrou domínio em todas as áreas.</li>';
+
+                return nomesPontosFracosParaGemini;
+
+            } else {
+                 // Modo silencioso: apenas retorna os dados para a API
+                var nomesPontosFracosParaGemini = [];
+                for (var k = 0; k < pontosDesenvolver.length; k++) {
+                    nomesPontosFracosParaGemini.push(pontosDesenvolver[k].split(' precisa')[0]);
+                }
+                return nomesPontosFracosParaGemini;
             }
-            document.getElementById('pontos-fortes-lista').innerHTML = htmlFortes || '<li>Continue praticando para identificar seus pontos fortes!</li>';
-
-            var htmlDesenvolver = '';
-
-            // ===================================================
-            // MODIFICAÇÃO AQUI: Capturar nomes puros para a API
-            // ===================================================
-            var nomesPontosFracosParaGemini = [];
-            // ===================================================
-
-            for (var k = 0; k < pontosDesenvolver.length; k++) {
-                htmlDesenvolver += '<li>' + pontosDesenvolver[k] + '</li>';
-
-                // MODIFICAÇÃO AQUI: Salva o nome puro do pilar
-                // Extrai "Decomposição" da string "Decomposição precisa ser..."
-                nomesPontosFracosParaGemini.push(pontosDesenvolver[k].split(' precisa')[0]);
-
-            }
-            document.getElementById('pontos-desenvolver-lista').innerHTML = htmlDesenvolver || '<li>Parabéns! Demonstrou domínio em todas as áreas.</li>';
-
-            return nomesPontosFracosParaGemini;
         }
 
         function capitalizarPrimeira(str) {
