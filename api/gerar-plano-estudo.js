@@ -1,109 +1,102 @@
-// api/gerar-plano-estudo.js
-// ** VERSÃO ATUALIZADA PARA RETORNAR JSON ESTRUTURADO COM RESPOSTAS **
+// ===================================================
+          // NOVA FUNÇÃO PARA CHAMAR A API (PLANO DE ESTUDO)
+          // ===================================================
+          async function buscarPlanoDeEstudoGemini(pontosFracos, problema) {
+            const container = document.getElementById('gemini-plano-estudo');
+            const conteudo = document.getElementById('gemini-plano-conteudo');
 
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+            // Mostra o container com a mensagem de "carregando"
+            container.style.display = 'block';
+            conteudo.innerHTML = '<p>Personalizando seu plano de estudo... O Gemini está analisando seu desempenho.</p>';
 
-// Definição do esquema JSON que queremos que a IA retorne
-const schema = {
-  type: "OBJECT",
-  properties: {
-    explicacao: {
-      type: "STRING",
-      description: "A explicação de 1-2 frases sobre por que os pilares são importantes para o problema."
-    },
-    exercicios: {
-      type: "ARRAY",
-      description: "Uma lista de 3 a 4 exercícios práticos.",
-      items: {
-        type: "OBJECT",
-        properties: {
-          pergunta: {
-            type: "STRING",
-            description: "O enunciado claro e direto do exercício."
-          },
-          tipo: {
-            type: "STRING",
-            description: "O tipo de exercício, por exemplo: 'multipla_escolha', 'complete_lacuna' ou 'dissertativo_curto'."
-          },
-          opcoes: {
-            type: "ARRAY",
-            description: "Uma lista de opções de resposta (apenas para tipo 'multipla_escolha').",
-            items: { type: "STRING" },
-            nullable: true
-          },
-          resposta_correta: {
-            type: "STRING",
-            description: "A resposta correta e completa para o exercício. Se for múltipla escolha, repita o texto da opção correta."
+            try {
+              // Chama a NOVA API que criamos na Vercel
+              const response = await fetch('/api/gerar-plano-estudo', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  pontosFracos: pontosFracos, // Array de strings, ex: ['Decomposição']
+                  problema: problema       // String, ex: 'Logística E-commerce'
+                })
+              });
+
+              if (!response.ok) {
+                throw new Error(`Erro na API: ${response.status}`);
+              }
+
+              const data = await response.json(); // data é { explicacao: "...", exercicios: [...] }
+
+              // Armazena os dados recebidos globalmente para as outras funções (PDF, Gabarito)
+              planoEstudoAtual = data;
+
+              // Limpa o conteúdo anterior
+              conteudo.innerHTML = '';
+
+              let htmlFinal = '';
+
+              // 1. Formata e adiciona a explicação
+              if (data.explicacao) {
+                  // Formata quebras de linha e negrito
+                  // ADICIONADO (data.explicacao || '') para garantir que seja uma string
+                  let explicacaoFormatada = (data.explicacao || '')
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\n/g, '<br>');
+                  htmlFinal += `<p class="explicacao-plano">${explicacaoFormatada}</p>`;
+              }
+
+              // 2. Formata e adiciona os exercícios
+              if (data.exercicios && data.exercicios.length > 0) {
+                  data.exercicios.forEach((ex, index) => {
+                      if (!ex) return; // Pula exercício nulo/undefined
+
+                      htmlFinal += `<div class="exercicio-plano" id="plano-ex-${index}">`;
+
+                      // Pergunta (formatando negrito e quebras de linha)
+                      // ADICIONADO (ex.pergunta || '') para defesa
+                      let perguntaFormatada = (ex.pergunta || 'Exercício sem pergunta')
+                                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                .replace(/\n/g, '<br>');
+                      htmlFinal += `<p><strong>${index + 1}.</strong> ${perguntaFormatada}</p>`;
+
+                      // Opções (se for múltipla escolha)
+                      if (ex.tipo === 'multipla_escolha' && ex.opcoes && ex.opcoes.length > 0) {
+                          htmlFinal += '<ul>';
+                          ex.opcoes.forEach(opt => {
+                              // Formata opções também
+                              // ADICIONADO (opt || '') para defesa
+                              let optFormatada = (opt || 'Opção inválida').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                              htmlFinal += `<li>${optFormatada}</li>`;
+                          });
+                          htmlFinal += '</ul>';
+                      }
+
+                      // Gabarito (oculto)
+                      // ADICIONADO (ex.resposta_correta || '') para defesa
+                      let respostaFormatada = (ex.resposta_correta || 'Resposta não fornecida')
+                                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                .replace(/\n/g, '<br>');
+                      htmlFinal += `<div class="gabarito-resposta"><strong>Gabarito:</strong> ${respostaFormatada}</div>`;
+
+                      htmlFinal += '</div>';
+                  });
+
+                  // Mostra os botões de ação (Gabarito, PDF, etc.)
+                  document.getElementById('plano-estudo-acoes').style.display = 'flex';
+                  // Reseta o botão do gabarito
+                  document.getElementById('btn-gabarito').innerHTML = '👁️ Mostrar Gabarito';
+                  container.classList.remove('mostrar-gabarito');
+
+              } else {
+                  // Se não houver exercícios (só a explicação de parabéns)
+                  document.getElementById('plano-estudo-acoes').style.display = 'none';
+              }
+
+              conteudo.innerHTML = htmlFinal;
+
+            } catch (error) {
+              console.error('Falha ao buscar plano de estudo:', error);
+              conteudo.innerHTML = '<p style="color: red;">Desculpe, não foi possível gerar seu plano de estudo no momento. Tente recarregar.</p>';
+            }
           }
-        },
-        required: ["pergunta", "tipo", "resposta_correta"]
-      }
-    }
-  },
-  required: ["explicacao", "exercicios"]
-};
-
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método não permitido' });
-  }
-
-  try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      // Configuração para forçar a saída em JSON
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-      },
-      // Configurações de segurança
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        // ... outras configurações de segurança ...
-      ],
-    });
-
-    const { pontosFracos, problema } = req.body;
-
-    if (!pontosFracos || pontosFracos.length === 0) {
-      // Retorna no formato JSON esperado, mesmo para o caso de sucesso
-      return res.status(200).json({
-        explicacao: "Parabéns! Você demonstrou excelente domínio em todas as áreas. Continue assim!",
-        exercicios: []
-      });
-    }
-
-    const prompt = `
-      Atue como um tutor especialista em Pensamento Computacional e Gestão Empresarial.
-      Um aluno completou uma jornada de 12 exercícios sobre o problema: "${problema}".
-      A análise final mostrou que os pontos onde ele mais errou foram os pilares:
-      ${pontosFracos.join(', ')}
-
-      Por favor, gere um "Plano de Estudo" personalizado para este aluno.
-      O plano deve conter:
-      1.  Uma breve explicação (1-2 frases) sobre por que esses pilares são importantes para o problema "${problema}".
-      2.  3 a 4 novos exercícios práticos (múltipla escolha, complete a lacuna, ou dissertativo curto) que FORCEM o aluno a praticar especificamente esses pilares fracos.
-      3.  Para cada exercício, forneça a pergunta, o tipo, as opções (se aplicável) e a resposta correta.
-
-      Retorne estritamente no formato JSON solicitado.
-    `;
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-
-    // O Gemini agora retorna o texto como uma string JSON válida
-    const jsonResponse = JSON.parse(response.text());
-
-    res.status(200).json(jsonResponse); // Envia o objeto JSON diretamente
-
-  } catch (error) {
-    console.error('Erro ao chamar o Gemini (gerar-plano-estudo):', error);
-    res.status(500).json({ error: 'Falha ao gerar o plano de estudo. Verifique os logs do servidor.' });
-  }
-}
