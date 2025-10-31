@@ -1,37 +1,6 @@
 // api/gerar-mais-exercicios.js
-// ** NOVO ARQUIVO DE API PARA GERAR MAIS EXERCÍCIOS SOB DEMANDA **
 
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
-
-// Esquema JSON apenas para a lista de exercícios
-const schemaExercicios = {
-  type: "ARRAY",
-  description: "Uma lista de 2 a 3 novos exercícios práticos.",
-  items: {
-    type: "OBJECT",
-    properties: {
-      pergunta: {
-        type: "STRING",
-        description: "O enunciado claro e direto do exercício."
-      },
-      tipo: {
-        type: "STRING",
-        description: "O tipo de exercício, por exemplo: 'multipla_escolha', 'complete_lacuna' ou 'dissertativo_curto'."
-      },
-      opcoes: {
-        type: "ARRAY",
-        description: "Uma lista de opções de resposta (apenas para tipo 'multipla_escolha').",
-        items: { type: "STRING" },
-        nullable: true
-      },
-      resposta_correta: {
-        type: "STRING",
-        description: "A resposta correta e completa para o exercício. Se for múltipla escolha, repita o texto da opção correta."
-      }
-    },
-    required: ["pergunta", "tipo", "resposta_correta"]
-  }
-};
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -40,50 +9,84 @@ export default async function handler(req, res) {
 
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    // MODIFICADO: Usando o modelo recomendado e estável
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-09-2025" });
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: schemaExercicios, // Usa o esquema de array de exercícios
-      },
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-      ],
-    });
-
-    // Recebe os mesmos parâmetros para manter o contexto
     const { pontosFracos, problema } = req.body;
 
+    // Se não houver pontos fracos, não há o que gerar.
     if (!pontosFracos || pontosFracos.length === 0) {
-      return res.status(200).json([]); // Retorna array vazio
+      return res.status(200).json([]); // Retorna um array vazio
     }
+
+    // Define o esquema de resposta JSON que queremos da IA
+    // Desta vez, queremos um ARRAY de exercícios
+    const schema = {
+      type: "ARRAY",
+      description: "Uma lista de 2 novos exercícios práticos focados nos pontos fracos.",
+      items: {
+        type: "OBJECT",
+        properties: {
+          pergunta: {
+            type: "STRING",
+            description: "O enunciado claro e direto do exercício."
+          },
+          tipo: {
+            type: "STRING",
+            enum: ["multipla_escolha", "complete_a_lacuna"],
+            description: "O tipo de exercício."
+          },
+          opcoes: {
+            type: "ARRAY",
+            description: "Uma lista de 3-4 opções de resposta. Obrigatório se o tipo for 'multipla_escolha'.",
+            items: { type: "STRING" }
+          },
+          resposta_correta: {
+            type: "STRING",
+            description: "A resposta correta para o exercício. Se for múltipla escolha, deve ser o texto exato de uma das opções."
+          }
+        },
+        required: ["pergunta", "tipo", "resposta_correta"]
+      }
+    };
 
     const prompt = `
       Atue como um tutor especialista em Pensamento Computacional e Gestão Empresarial.
-      Um aluno está pedindo MAIS exercícios sobre o problema: "${problema}".
-      Seus pontos fracos são: ${pontosFracos.join(', ')}
+      Um aluno que está estudando o problema "${problema}" pediu MAIS exercícios para praticar seus pontos fracos, que são: ${pontosFracos.join(', ')}.
 
-      Por favor, gere 2 ou 3 NOVOS exercícios práticos (diferentes dos anteriores)
-      que reforcem especificamente esses pilares fracos.
+      Gere exatamente 2 novos exercícios práticos (diferentes dos anteriores) focados nesses pilares.
 
-      Para cada exercício, forneça a pergunta, o tipo, as opções (se aplicável) e a resposta correta.
-
-      Retorne estritamente no formato JSON solicitado (um array de exercícios).
+      Formate a resposta EXATAMENTE de acordo com o esquema JSON fornecido (um array de exercícios).
     `;
 
-    const result = await model.generateContent(prompt);
+    // Configuração para forçar a saída JSON
+    const generationConfig = {
+      responseMimeType: "application/json",
+      responseSchema: schema,
+    };
+
+    // CORRIGIDO: O prompt e o generationConfig devem estar em um único objeto
+    const requestPayload = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: generationConfig
+    };
+
+    // Gera o conteúdo
+    const result = await model.generateContent(requestPayload);
     const response = await result.response;
 
-    const jsonResponse = JSON.parse(response.text());
+    // Extrai o texto (que deve ser uma string JSON)
+    const jsonText = response.text();
 
-    res.status(200).json(jsonResponse); // Envia o array de exercícios
+    // Converte a string JSON em um objeto JavaScript real (um array)
+    const jsonObject = JSON.parse(jsonText);
+
+    // Envia o objeto JSON (array) de volta para o frontend
+    res.status(200).json(jsonObject);
 
   } catch (error) {
     console.error('Erro ao chamar o Gemini (gerar-mais-exercicios):', error);
-    res.status(500).json({ error: 'Falha ao gerar mais exercícios. Verifique os logs do servidor.' });
+    // Retorna um array vazio em caso de erro
+    res.status(500).json([]);
   }
 }
