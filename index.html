@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jornada do Pensamento Computacional</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+
     <style>
         * {
             margin: 0;
@@ -1527,6 +1531,102 @@
             font-weight: 600;
             margin-top: 0.5rem;
         }
+
+        #plano-estudo-acoes {
+            display: none; /* Começa oculto */
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #E5E7EB;
+        }
+
+        /* Botões de ação do plano de estudo */
+        .btn-plano {
+            padding: 0.75rem 1.5rem;
+            font-size: 0.95rem;
+            flex-grow: 1; /* Faz os botões crescerem */
+        }
+
+        .btn-gabarito {
+            background-color: #F59E0B; /* Laranja */
+            color: white;
+        }
+        .btn-gabarito:hover:not(:disabled) {
+            background-color: #D97706;
+        }
+
+        .btn-gerar-mais {
+            background-color: #4F46E5; /* Indigo */
+            color: white;
+        }
+        .btn-gerar-mais:hover:not(:disabled) {
+            background-color: #4338CA;
+        }
+
+        .btn-pdf-plano {
+            background-color: #EF4444; /* Vermelho */
+            color: white;
+        }
+        .btn-pdf-plano:hover:not(:disabled) {
+            background-color: #DC2626;
+        }
+
+        /* Estilos para o conteúdo do plano gerado */
+        #gemini-plano-conteudo {
+            line-height: 1.7;
+            font-size: 1.1rem;
+        }
+
+        #gemini-plano-conteudo p.explicacao-plano {
+            font-style: italic;
+            background-color: #F3F4F6;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Cada exercício gerado */
+        .exercicio-plano {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed #D1D5DB;
+        }
+
+        .exercicio-plano p {
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .exercicio-plano ul {
+            list-style-type: lower-alpha;
+            padding-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        /* A resposta (gabarito) - OCULTA POR PADRÃO */
+        .gabarito-resposta {
+            display: none;
+            background: #D1FAE5; /* Fundo verde claro */
+            color: #065F46; /* Texto verde escuro */
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            border: 1px solid #A7F3D0;
+            margin-top: 1rem;
+        }
+
+        .gabarito-resposta strong {
+            color: #047857;
+        }
+
+        /* Classe para mostrar o gabarito */
+        .mostrar-gabarito .gabarito-resposta {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+
     </style>
 </head>
 <body>
