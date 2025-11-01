@@ -3993,8 +3993,23 @@
 
         // FUNÇÕES DE DOWNLOAD DE RELATÓRIO
         function baixarRelatorioPDF() {
-            // (Mantenha sua função baixarRelatorioPDF existente aqui)
-             console.log("Baixando PDF do Relatório...");
+          var html = gerarHTMLRelatorio();
+
+          var janela = window.open('', '_blank');
+          if (janela) {
+              janela.document.write(html);
+              janela.document.close();
+
+              setTimeout(function() {
+                  janela.print();
+              }, 500);
+          }
+
+          mostrarModal({
+              titulo: '📄 Relatório Gerado!',
+              mensagem: 'Use Ctrl+P ou Cmd+P para salvar como PDF.\n\nO relatório contém todas as métricas de desempenho para avaliação pedagógica.',
+              tipo: 'sucesso'
+          });
         }
         function baixarDadosCSV() {
             // (Mantenha sua função baixarDadosCSV existente aqui)
