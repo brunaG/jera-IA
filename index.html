@@ -4012,20 +4012,219 @@
           });
         }
         function baixarDadosCSV() {
-            // (Mantenha sua função baixarDadosCSV existente aqui)
-            console.log("Baixando CSV...");
+          var csv = gerarCSV();
+          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+          // Criar link para download
+          var link = document.createElement('a');
+          var url = URL.createObjectURL(blob);
+
+          link.setAttribute('href', url);
+          link.setAttribute('download', 'dados_' + (dadosAluno.nome || 'aluno').replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.csv');
+          link.style.visibility = 'hidden';
+
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          URL.revokeObjectURL(url);
+
+          mostrarModal({
+              titulo: '📊 Dados Exportados!',
+              mensagem: 'Arquivo CSV baixado com sucesso!\n\nContém dados estruturados para análise estatística.',
+              tipo: 'sucesso'
+          });
         }
-        function gerarHTMLRelatorio() { return `<html></html>`; }
-        function gerarCSV() { return `header\ndata`; }
-        function cssRelatorio() { return `body{}`; }
+        function gerarHTMLRelatorio() {
+          var aluno = dadosAluno.nome || 'Aluno';
+            var problema = obterNomeProblema(estadoJornada.problemaEscolhido);
+            var data = new Date().toLocaleDateString('pt-BR');
+            var percentual = Math.round((estadoJornada.pontuacaoTotal / 120) * 100);
+
+            return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Relatório de Avaliação - ${aluno}</title>
+                <style>
+                    ${cssRelatorio()}
+                </style>
+            </head>
+            <body>
+                <div class="relatorio">
+                    <header class="cabecalho">
+                        <h1>📊 RELATÓRIO DE AVALIAÇÃO</h1>
+                        <h2>Jornada do Pensamento Computacional</h2>
+                        <p>Data: ${data}</p>
+                    </header>
+
+                    <section class="identificacao">
+                        <h3>Identificação</h3>
+                        <table>
+                            <tr><td><strong>Aluno:</strong></td><td>${aluno}</td></tr>
+                            <tr><td><strong>Problema:</strong></td><td>${problema}</td></tr>
+                            <tr><td><strong>Data Início:</strong></td><td>${new Date(dadosAluno.dataInicio).toLocaleString('pt-BR')}</td></tr>
+                            <tr><td><strong>Data Fim:</strong></td><td>${new Date(dadosAluno.dataFim).toLocaleString('pt-BR')}</td></tr>
+                            <tr><td><strong>Tempo Total:</strong></td><td>${formatarTempo(metricas.resumo.tempoTotal)}</td></tr>
+                        </table>
+                    </section>
+
+                    <section class="resumo">
+                        <h3>Resumo Geral</h3>
+                        <table>
+                            <tr><td>Pontuação Final:</td><td>${estadoJornada.pontuacaoTotal}/120</td></tr>
+                            <tr><td>Percentual:</td><td>${percentual}%</td></tr>
+                            <tr><td>Acertou 1ª Tentativa:</td><td>${metricas.resumo.acertouPrimeira}</td></tr>
+                            <tr><td>Acertou 2ª Tentativa:</td><td>${metricas.resumo.acertouSegunda}</td></tr>
+                            <tr><td>Errou:</td><td>${metricas.resumo.errou}</td></tr>
+                            <tr><td>Pulou:</td><td>${metricas.resumo.pulou}</td></tr>
+                        </table>
+                    </section>
+
+                    <section class="pilares">
+                        <h3>Desempenho por Pilar</h3>
+                        ${gerarTabelaPilares()}
+                    </section>
+
+                    <section class="exercicios">
+                        <h3>Detalhamento por Exercício</h3>
+                        ${gerarTabelaExerciciosRelatorio()}
+                    </section>
+
+                    <section class="analise">
+                        <h3>Análise Qualitativa</h3>
+                        ${gerarAnaliseRelatorio()}
+                    </section>
+                </div>
+            </body>
+            </html>
+            `;
+         }
+
+
+        function gerarCSV() {
+          var linhas = [];
+
+            // Cabeçalho
+            linhas.push('Aluno,Problema,Exercicio,Pilar,Status,Tentativas,Pontos,Tempo_Segundos');
+
+            // Dados
+            for (var i = 0; i < metricas.exercicios.length; i++) {
+                var ex = metricas.exercicios[i];
+                linhas.push([
+                    dadosAluno.nome || 'Aluno',
+                    estadoJornada.problemaEscolhido,
+                    ex.numero,
+                    ex.pilar,
+                    ex.status,
+                    ex.tentativas,
+                    ex.pontos,
+                    ex.tempoGasto
+                ].join(','));
+            }
+
+            return linhas.join('\n');
+         }
+
+
+        function cssRelatorio() {
+          return `
+                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f5f5f5; }
+                .relatorio { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; }
+                .cabecalho { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #2563EB; padding-bottom: 1rem; }
+                .cabecalho h1 { color: #2563EB; margin: 0; }
+                .cabecalho h2 { color: #374151; margin: 0.5rem 0; }
+                section { margin-bottom: 2rem; }
+                h3 { color: #1F2937; border-bottom: 1px solid #E5E7EB; padding-bottom: 0.5rem; }
+                table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+                td, th { padding: 0.5rem; border: 1px solid #E5E7EB; text-align: left; }
+                th { background: #F9FAFB; font-weight: 600; }
+                .status-primeira { background: #D1FAE5; }
+                .status-segunda { background: #DBEAFE; }
+                .status-erro { background: #FEE2E2; }
+                .status-pulou { background: #FEF3C7; }
+                @media print { body { margin: 0; background: white; } }
+            `;
+         }
+
+
         function formatarTempo(segundos) {
             var minutos = Math.floor(segundos / 60);
             var segs = segundos % 60;
             return minutos + 'min ' + segs + 's';
         }
-        function gerarTabelaPilares() { return `<table></table>`; }
-        function gerarTabelaExerciciosRelatorio() { return `<table></table>`; }
-        function gerarAnaliseRelatorio() { return `<div></div>`; }
+
+
+        function gerarTabelaPilares() {
+          var html = '<table><tr><th>Pilar</th><th>Pontos</th><th>Percentual</th><th>1ª Tent.</th><th>2ª Tent.</th></tr>';
+
+            var pilares = [
+                {id: 'decomposicao', nome: 'Decomposição'},
+                {id: 'padroes', nome: 'Padrões'},
+                {id: 'abstracao', nome: 'Abstração'},
+                {id: 'algoritmos', nome: 'Algoritmos'}
+            ];
+
+            for (var i = 0; i < pilares.length; i++) {
+                var p = pilares[i];
+                var pontos = estadoJornada.pontuacaoPorPilar[p.id];
+                var perc = Math.round((pontos / 30) * 100);
+                var acertos1 = metricas.pilares[p.id].acertos1a;
+                var acertos2 = metricas.pilares[p.id].acertos2a;
+
+                html += `<tr><td>${p.nome}</td><td>${pontos}/30</td><td>${perc}%</td><td>${acertos1}</td><td>${acertos2}</td></tr>`;
+            }
+
+            html += '</table>';
+            return html;
+        }
+
+
+
+        function gerarTabelaExerciciosRelatorio(){ var html = '<table><tr><th>#</th><th>Pilar</th><th>Status</th><th>Tent.</th><th>Pontos</th><th>Tempo</th></tr>';
+
+            for (var i = 0; i < metricas.exercicios.length; i++) {
+                var ex = metricas.exercicios[i];
+                var statusTexto = {
+                    'acertou_primeira': 'Acertou 1ª',
+                    'acertou_segunda': 'Acertou 2ª',
+                    'erro': 'Errou',
+                    'pulou': 'Pulou'
+                };
+
+                var classe = 'status-' + ex.status.replace('_', '-');
+                if (ex.status === 'erro') classe = 'status-erro';
+
+                html += `<tr class="${classe}"><td>${ex.numero}</td><td>${capitalizarPrimeira(ex.pilar)}</td><td>${statusTexto[ex.status]}</td><td>${ex.tentativas}/2</td><td>${ex.pontos >= 0 ? '+' : ''}${ex.pontos}</td><td>${ex.tempoGasto}s</td></tr>`;
+            }
+
+            html += '</table>';
+            return html;
+
+        }
+
+
+        function gerarAnaliseRelatorio() {
+          var html = '<div>';
+
+            // Simular análise qualitativa
+            var percentualGeral = Math.round((estadoJornada.pontuacaoTotal / 120) * 100);
+
+            if (percentualGeral >= 80) {
+                html += '<p><strong>Performance Geral:</strong> Excelente domínio dos conceitos de Pensamento Computacional.</p>';
+            } else if (percentualGeral >= 60) {
+                html += '<p><strong>Performance Geral:</strong> Boa compreensão, com oportunidades de aprimoramento.</p>';
+            } else {
+                html += '<p><strong>Performance Geral:</strong> Conceitos básicos adquiridos, recomenda-se revisão e prática adicional.</p>';
+            }
+
+            html += '<p><strong>Taxa de Acerto na 1ª Tentativa:</strong> ' + Math.round((metricas.resumo.acertouPrimeira / 12) * 100) + '%</p>';
+            html += '<p><strong>Persistência:</strong> ' + (metricas.resumo.pulou === 0 ? 'Completou todos os exercícios' : 'Pulou ' + metricas.resumo.pulou + ' exercícios') + '</p>';
+
+            html += '</div>';
+            return html;
+          }
 
         // Fechar modal ao clicar fora
         document.addEventListener('click', function(e) {
